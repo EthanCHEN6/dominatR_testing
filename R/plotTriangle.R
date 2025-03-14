@@ -16,7 +16,7 @@ plot_Triangle_dummy=function()
 
     data=data.frame(a=runif(ok,0,1),b=runif(ok,0,1),c=runif(ok,0,1))
     data=data %>% mutate(color=rgb(a,b,c,maxColorValue = 1))
-    data=cbind(data,getCOM(data[,c(1,2,3)]))
+    data=cbind(data,centmass(data[,c(1,2,3)]))
     data=data %>% arrange(a^2+b^2+c^2)
 
     #dev.off()
