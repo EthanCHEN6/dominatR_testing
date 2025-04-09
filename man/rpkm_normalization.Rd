@@ -2,20 +2,56 @@
 % Please edit documentation in R/normalization_rpkm.R
 \name{rpkm_normalization}
 \alias{rpkm_normalization}
-\title{Reads Per Kilobase Million}
+\title{RPKM Normalization}
 \usage{
-rpkm_normalization(df, gene_length, log_trans = F)
+rpkm_normalization(
+  x,
+  gene_length = NULL,
+  log_trans = FALSE,
+  assay_name = NULL,
+  new_assay_name = NULL
+)
 }
 \arguments{
-\item{df}{A dataframe or matrix, must contain only numerical valeus}
+\item{x}{A numeric \code{matrix}, \code{data.frame}, or \code{SummarizedExperiment}.}
 
-\item{gene_length}{A vector with the length for the genes in the dataframe in basepair format}
+\item{gene_length}{A numeric vector of gene lengths (required if \code{x} is matrix or data.frame).}
 
-\item{log_trans}{Logical attribute, determines if normalized data should be log2 transformed. Note: An extra count is added.}
+\item{log_trans}{Logical. Whether to apply log2 transform to the output.}
+
+\item{assay_name}{If \code{x} is a SummarizedExperiment, the assay to normalize.}
+
+\item{new_assay_name}{If \code{x} is a SummarizedExperiment, name of a new assay
+to store the result. If NULL, overwrites the selected assay.}
 }
 \value{
-A Matrix with normalized counts.
+A numeric matrix of RPKM values (or log2-RPKM), or a modified SummarizedExperiment object.
 }
 \description{
-Normalizes a count matrix by the RPKM method
+Normalizes gene expression using Reads Per Kilobase per Million reads (RPKM):
+  \enumerate{
+    \item First normalize counts by library size (i.e., column totals),
+    \item Then divide by gene length (in kilobases),
+    \item If \code{log_trans = TRUE}, applies \code{log2(RPKM + 1)}.
+  }
+}
+\examples{
+# Example using a matrix
+mat <- matrix(c(100, 200, 300,
+                400, 500, 600),
+              nrow = 2, byrow = TRUE)
+rownames(mat) <- c("gene1", "gene2")
+colnames(mat) <- c("sample1", "sample2", "sample3")
+gene_length <- c(1000, 2000)  # in base pairs
+
+rpkm_mat <- rpkm_normalization(mat, gene_length = gene_length, log_trans = TRUE)
+
+# Example using SummarizedExperiment
+library(SummarizedExperiment)
+se <- SummarizedExperiment(assays = list(counts = mat))
+rowData(se)$gene_length <- gene_length
+se_rpkm <- rpkm_normalization(se, log_trans = TRUE)
+
+assay(se_rpkm, "counts")
+
 }

@@ -1,23 +1,60 @@
 
-#' Counts Per Million
+#' Counts Per Million Normalization
 #'
-#' @param df A dataframe or matrix, must contain only numerical valeus
-#' @param log_trans Logical attribute, determines if normalized data should be log2 transformed. Note: An extra count is added.
-#'
-#' @description Normalizes a count matrix by the counts per million method
-#' @return A Matrix with normalized counts.
+#' @param object A matrix, data.frame, list of data.frames, or a SummarizedExperiment object.
+#' @param log_trans Logical, whether to apply log2 transformation.
+#' @return Normalized object of the same structure.
 #' @export
 #'
-cpm_normalization = function(df, log_trans = F){
+#'
 
-  sum = colSums(df)/1e6
+setGeneric("cpm_normalization", function(x, log_trans = FALSE) {
+  standardGeneric("cpm_normalization")
+})
 
-  df = mapply('/', df, sum)
-
-  if(log_trans == F){
-    return(df)
-  } else {
-    df = log2(df + 1)
-    return(df)
+normalize_cpm <- function(df, log_trans = FALSE) {
+  if (!is.numeric(as.matrix(df))) {
+    stop("Input matrix must be numeric.")
   }
+  sum <- colSums(df) / 1e6
+  norm_df <- sweep(df, 2, sum, "/")
+  if (log_trans) {
+    norm_df <- log2(norm_df + 1)
+  }
+  return(as.data.frame(norm_df))
 }
+
+
+# Method for SummarizedExperiment
+#' @importFrom SummarizedExperiment assay assay<-
+#' @export
+setMethod("cpm_normalization", "SummarizedExperiment", function(x, log_trans = FALSE) {
+  assay_data <- assay(x)
+  normalized <- normalize_cpm(assay_data, log_trans)
+  assay(x) <- as.matrix(normalized)
+  return(x)
+})
+
+# Method for data.frame
+#' @export
+setMethod("cpm_normalization", "data.frame", function(x, log_trans = FALSE) {
+  normalize_cpm(x, log_trans)
+})
+
+# Method for matrix
+#' @export
+setMethod("cpm_normalization", "matrix", function(x, log_trans = FALSE) {
+  normalize_cpm(x, log_trans)
+})
+
+
+# Method for list
+#' @export
+setMethod("cpm_normalization", "list", function(x, log_trans = FALSE) {
+  lapply(x, function(item) {
+    if (!is.matrix(item) && !is.data.frame(item)) {
+      stop("List elements must be matrices or data.frames.")
+    }
+    normalize_cpm(item, log_trans)
+  })
+})

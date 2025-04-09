@@ -2,18 +2,18 @@
 % Please edit documentation in R/normalization_cpm.R
 \name{cpm_normalization}
 \alias{cpm_normalization}
-\title{Counts Per Million}
+\title{Counts Per Million Normalization}
 \usage{
-cpm_normalization(df, log_trans = F)
+cpm_normalization(x, log_trans = FALSE)
 }
 \arguments{
-\item{df}{A dataframe or matrix, must contain only numerical valeus}
+\item{log_trans}{Logical, whether to apply log2 transformation.}
 
-\item{log_trans}{Logical attribute, determines if normalized data should be log2 transformed. Note: An extra count is added.}
+\item{object}{A matrix, data.frame, list of data.frames, or a SummarizedExperiment object.}
 }
 \value{
-A Matrix with normalized counts.
+Normalized object of the same structure.
 }
 \description{
-Normalizes a count matrix by the counts per million method
+Counts Per Million Normalization
 }

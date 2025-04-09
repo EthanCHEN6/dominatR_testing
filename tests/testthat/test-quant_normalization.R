@@ -1,14 +1,17 @@
 test_that("Quantile normalization works correctly", {
-  test_data <- data.frame(
-    sample1 = c(10, 20, 30, 40, 50),
-    sample2 = c(5, 15, 25, 35, 45),
-    sample3 = c(2, 12, 22, 32, 42)
-  )
+  mat <- matrix(c(10, 50, 30,
+                  40, 60, 20),
+                nrow = 2, byrow = TRUE)
+  rownames(mat) <- c("gene1", "gene2")
+  colnames(mat) <- c("sample1", "sample2", "sample3")
 
-  result <- quant_normalization(test_data, log_trans = FALSE)
-  expect_true(is.matrix(result))
-  expect_equal(dim(result), dim(test_data))
-  result_log <- quant_normalization(test_data, log_trans = TRUE)
-  expect_equal(result_log, log2(result + 1))
-  expect_equal(rownames(result), rownames(test_data))
+  sorted <- apply(mat, 2, sort)
+  means <- rowMeans(sorted)
+  ranks <- apply(mat, 2, rank, ties.method = "min")
+  expected <- apply(ranks, 2, function(r) means[r])
+  rownames(expected) <- rownames(mat)
+  colnames(expected) <- colnames(mat)
+
+  result <- quantile_normalization(mat, log_trans = FALSE)
+  expect_equal(result, expected, tolerance = 1e-6)
 })
