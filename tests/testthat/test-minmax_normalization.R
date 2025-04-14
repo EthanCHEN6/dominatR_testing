@@ -1,3 +1,4 @@
+library(SummarizedExperiment)
 test_that("minmax_normalization on matrix (one column) scales correctly", {
   mat <- matrix(c(10, 20, 30), nrow=3)
   # Single column => min=10, max=30 => range=20

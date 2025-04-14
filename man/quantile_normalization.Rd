@@ -12,41 +12,75 @@ quantile_normalization(
 )
 }
 \arguments{
-\item{x}{A \code{matrix}, \code{data.frame}, or \code{SummarizedExperiment}.}
+\item{x}{A numeric \code{matrix} or \code{data.frame} of gene counts,
+or a \code{SummarizedExperiment} containing such counts.
+\describe{
+  \item{If a \code{SummarizedExperiment},}{the function applies normalization
+    to the specified assay (via \code{assay_name}).}
+  \item{If a \code{data.frame}/\code{matrix},}{the normalization is applied directly.}
+}}
 
-\item{log_trans}{Logical. If TRUE, applies log2 transformation to normalized data.}
+\item{log_trans}{Logical. If \code{TRUE}, apply \code{log2(... + 1)} transform
+to the quantile-normalized values.}
 
-\item{assay_name}{If \code{x} is a SummarizedExperiment, the assay to normalize.}
+\item{assay_name}{If \code{x} is a SummarizedExperiment, name of the assay to
+normalize. Defaults to the first assay if not specified.}
 
-\item{new_assay_name}{If \code{x} is a SummarizedExperiment, name of a new assay
-to store the result. If NULL, overwrites the selected assay.}
+\item{new_assay_name}{If \code{x} is a SummarizedExperiment, name of a new
+assay in which to store the quantile-normalized (or log2-transformed) values.
+If \code{NULL}, overwrites the original assay.}
 }
 \value{
-A normalized matrix (or SummarizedExperiment with modified or new assay).
+A numeric \strong{matrix} of quantile-normalized (or log2-normalized)
+  values if \code{x} is a data.frame or matrix. If \code{x} is a
+  SummarizedExperiment, returns the modified SummarizedExperiment with the
+  normalized data placed in the existing or new assay.
 }
 \description{
-Normalizes each column to have the same distribution using quantile normalization.
-  \enumerate{
-    \item Sort values in each column
-    \item Replace each rank with the mean across columns
-    \item If \code{log_trans = TRUE}, applies \code{log2(... + 1)} transform
-  }
+Applies quantile normalization across samples (columns), enforcing the same
+empirical distribution for each column. This helps to remove technical bias
+across replicates in high-throughput datasets.
+}
+\details{
+If \code{x} is a \code{SummarizedExperiment}, the function will extract the
+assay using \code{assay_name}, apply quantile normalization, and return a
+new or updated assay. If \code{x} is a matrix or data.frame, normalization is
+applied directly to the input matrix.
 }
 \examples{
-# Example using a matrix
-mat <- matrix(c(10, 50, 30,
-                40, 60, 20),
+# -------------------------------
+# 1) Using a matrix
+# -------------------------------
+mat <- matrix(c(5, 4, 3,
+                2, 1, 6),
               nrow = 2, byrow = TRUE)
 rownames(mat) <- c("gene1", "gene2")
 colnames(mat) <- c("sample1", "sample2", "sample3")
 
-qn_mat <- quantile_normalization(mat, log_trans = TRUE)
+qn_mat <- quantile_normalization(mat)
+qn_log <- quantile_normalization(mat, log_trans = TRUE)
 
-# Example using SummarizedExperiment
-library(SummarizedExperiment)
-se <- SummarizedExperiment(assays = list(counts = mat))
-se_qn <- quantile_normalization(se, log_trans = TRUE)
+# -------------------------------
+# 2) Using a SummarizedExperiment
+# -------------------------------
+if (requireNamespace("airway") && requireNamespace("SummarizedExperiment")) {
+  library(SummarizedExperiment)
+  data(airway, package = "airway")
+  se <- airway
 
-assay(se_qn, "counts")
+  # Overwrite the 'counts' assay
+  se_qn <- quantile_normalization(se)
+  head(assay(se_qn))
+
+  # Store results in a new assay
+  se_qn2 <- quantile_normalization(se, new_assay_name = "quant_counts")
+  head(assay(se_qn2, "quant_counts"))
+
+  # Create a test assay and normalize
+  mat <- assay(se)
+  assay(se, "test_counts") <- mat
+  se_qn3 <- quantile_normalization(se, assay_name = "test_counts", new_assay_name = "qn_test")
+  head(assay(se_qn3, "qn_test"))
+}
 
 }
