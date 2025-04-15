@@ -1,9 +1,12 @@
 #' Quantile Normalization
 #'
 #' @description
-#' Applies quantile normalization across samples (columns), enforcing the same
-#' empirical distribution for each column. This helps to remove technical bias
-#' across replicates in high-throughput datasets.
+#' Normalizes read counts by the quantile normalization method:
+#'   \enumerate{
+#'     \item Each sample (column) is sorted, and values at each rank are averaged across columns
+#'     \item Each sample's values are replaced with the average of their respective rank
+#'     \item If \code{log_trans = TRUE}, applies \code{log2(QN + 1)} transformation
+#'   }
 #'
 #' @details
 #' If \code{x} is a \code{SummarizedExperiment}, the function will extract the
@@ -32,111 +35,149 @@
 #'   normalized data placed in the existing or new assay.
 #'
 #' @examples
-#' # -------------------------------
-#' # 1) Using a matrix
-#' # -------------------------------
-#' mat <- matrix(c(5, 4, 3,
-#'                 2, 1, 6),
-#'               nrow = 2, byrow = TRUE)
-#' rownames(mat) <- c("gene1", "gene2")
-#' colnames(mat) <- c("sample1", "sample2", "sample3")
+#' library(SummarizedExperiment)
+#' library(airway)
+#' data('airway')
 #'
-#' qn_mat <- quantile_normalization(mat)
-#' qn_log <- quantile_normalization(mat, log_trans = TRUE)
+#' se <- airway
+#'
+#' # -------------------------------
+#' # 1) Using a data.frame
+#' # -------------------------------
+#' df <- assay(se)
+#'
+#' ## Without log transformation
+#' df_qn <- quantile_normalization(df, log_trans = FALSE)
+#' df_qn[1:5, 1:5]
+#'
+#' ## With log transformation
+#' df_qn_log <- quantile_normalization(df, log_trans = TRUE)
+#' df_qn_log[1:5, 1:5]
 #'
 #' # -------------------------------
 #' # 2) Using a SummarizedExperiment
 #' # -------------------------------
-#' if (requireNamespace("airway") && requireNamespace("SummarizedExperiment")) {
-#'   library(SummarizedExperiment)
-#'   data(airway, package = "airway")
-#'   se <- airway
 #'
-#'   # Overwrite the 'counts' assay
-#'   se_qn <- quantile_normalization(se)
-#'   head(assay(se_qn))
+#' ## Overwrite existing assay
+#' se2 <- quantile_normalization(se)
+#' assay(se2)[1:5, 1:5]
 #'
-#'   # Store results in a new assay
-#'   se_qn2 <- quantile_normalization(se, new_assay_name = "quant_counts")
-#'   head(assay(se_qn2, "quant_counts"))
+#' ## Store result in new assay
+#' se3 <- quantile_normalization(se, new_assay_name = "quant_norm")
+#' assay(se3, "quant_norm")[1:5, 1:5]
 #'
-#'   # Create a test assay and normalize
-#'   mat <- assay(se)
-#'   assay(se, "test_counts") <- mat
-#'   se_qn3 <- quantile_normalization(se, assay_name = "test_counts", new_assay_name = "qn_test")
-#'   head(assay(se_qn3, "qn_test"))
-#' }
+#' ## Use specific input assay (simulate new one)
+#' new_matrix <- matrix(
+#'   data = sample(x = seq(1, 100000), size = nrow(se) * ncol(se), replace = TRUE),
+#'   nrow = nrow(se),
+#'   ncol = ncol(se)
+#' )
+#' rownames(new_matrix) <- rownames(se)
+#' colnames(new_matrix) <- colnames(se)
 #'
+#' ## Create a new assay in the SummarizedExperiment
+#' assay(se, "new_counts") <- new_matrix
+#'
+#' ## Normalize the new assay and store it under a new name
+#' se4 <- quantile_normalization(se, assay_name = "new_counts", new_assay_name = "quant_new")
+#' assay(se4, "quant_new")[1:5, 1:5]
 #' @export
 quantile_normalization <- function(x,
-                                   log_trans = FALSE,
-                                   assay_name = NULL,
-                                   new_assay_name = NULL) {
+                                   log_trans       = FALSE,
+                                   assay_name      = NULL,
+                                   new_assay_name  = NULL) {
 
-  #---------------------------
+  #---------------------------#
   # SummarizedExperiment path
-  #---------------------------
+  #---------------------------#
   if (inherits(x, "SummarizedExperiment")) {
+
     if (is.null(assay_name)) {
-      all_assays <- SummarizedExperiment::assayNames(x)
+      all_assays <- assayNames(x)
       if (length(all_assays) < 1) {
         stop("No assays found in the SummarizedExperiment.")
       }
       assay_name <- all_assays[[1]]
     }
 
-    mat <- SummarizedExperiment::assay(x, assay_name)
+    mat <- assay(x, assay_name)
     if (is.null(mat)) {
       stop("No assay named '", assay_name, "' found in the SummarizedExperiment.")
     }
+
     if (!is.numeric(mat)) {
       stop("Selected assay is not numeric. Please provide numeric data for quantile normalization.")
     }
 
-    # Perform quantile normalization
-    norm_mat <- .quantile_normalize_core(mat)
+    ## Calculations
+    # 1) Rank matrix
+    ranks <- apply(mat, 2, rank, ties.method = "min")
+
+    # 2) Sorted matrix
+    sorted <- apply(mat, 2, sort)
+
+    # 3) Row means
+    means <- rowMeans(sorted)
+
+    # 4) Map means to original ranks
+    norm <- apply(ranks, 2, function(r) means[r])
+
+    # 5) Preserve row/col names
+    rownames(norm) <- rownames(mat)
+    colnames(norm) <- colnames(mat)
+
+    # 6) Optional log2
     if (log_trans) {
-      norm_mat <- log2(norm_mat + 1)
+      norm <- log2(norm + 1)
     }
 
+    # 7) Store result in new or existing assay
     if (is.null(new_assay_name)) {
-      assay(x, assay_name) <- norm_mat
+      assay(x, assay_name) <- norm
     } else {
-      assay(x, new_assay_name) <- norm_mat
+      assay(x, new_assay_name) <- norm
     }
 
     return(x)
 
-    #---------------------------
-    # matrix / data.frame path
-    #---------------------------
+    #---------------------------#
+    # data.frame / matrix path
+    #---------------------------#
   } else if (is.data.frame(x) || is.matrix(x)) {
+
     if (is.data.frame(x)) {
       x <- as.matrix(x)
     }
+
     if (!is.numeric(x)) {
-      stop("Input must be numeric matrix or data.frame.")
+      stop("Input must be numeric.")
     }
 
-    norm_mat <- .quantile_normalize_core(x)
+    ## Calculations
+    # 1) Rank matrix
+    ranks <- apply(x, 2, rank, ties.method = "min")
+
+    # 2) Sorted matrix
+    sorted <- apply(x, 2, sort)
+
+    # 3) Row means
+    means <- rowMeans(sorted)
+
+    # 4) Map means to original ranks
+    norm <- apply(ranks, 2, function(r) means[r])
+
+    # 5) Preserve row/col names
+    rownames(norm) <- rownames(x)
+    colnames(norm) <- colnames(x)
+
+    # 6) Optional log2
     if (log_trans) {
-      norm_mat <- log2(norm_mat + 1)
+      norm <- log2(norm + 1)
     }
 
-    return(norm_mat)
+    return(norm)
 
   } else {
     stop("Input must be a matrix/data.frame or a SummarizedExperiment.")
   }
-}
-
-# Internal quantile normalization helper (kept local)
-.quantile_normalize_core <- function(mat) {
-  ranks <- apply(mat, 2, rank, ties.method = "min")
-  sorted <- apply(mat, 2, sort)
-  means <- rowMeans(sorted)
-  norm <- apply(ranks, 2, function(r) means[r])
-  rownames(norm) <- rownames(mat)
-  colnames(norm) <- colnames(mat)
-  return(norm)
 }

@@ -37,9 +37,12 @@ A numeric \strong{matrix} of quantile-normalized (or log2-normalized)
   normalized data placed in the existing or new assay.
 }
 \description{
-Applies quantile normalization across samples (columns), enforcing the same
-empirical distribution for each column. This helps to remove technical bias
-across replicates in high-throughput datasets.
+Normalizes read counts by the quantile normalization method:
+  \enumerate{
+    \item Each sample (column) is sorted, and values at each rank are averaged across columns
+    \item Each sample's values are replaced with the average of their respective rank
+    \item If \code{log_trans = TRUE}, applies \code{log2(QN + 1)} transformation
+  }
 }
 \details{
 If \code{x} is a \code{SummarizedExperiment}, the function will extract the
@@ -48,39 +51,50 @@ new or updated assay. If \code{x} is a matrix or data.frame, normalization is
 applied directly to the input matrix.
 }
 \examples{
-# -------------------------------
-# 1) Using a matrix
-# -------------------------------
-mat <- matrix(c(5, 4, 3,
-                2, 1, 6),
-              nrow = 2, byrow = TRUE)
-rownames(mat) <- c("gene1", "gene2")
-colnames(mat) <- c("sample1", "sample2", "sample3")
+library(SummarizedExperiment)
+library(airway)
+data('airway')
 
-qn_mat <- quantile_normalization(mat)
-qn_log <- quantile_normalization(mat, log_trans = TRUE)
+se <- airway
+
+# -------------------------------
+# 1) Using a data.frame
+# -------------------------------
+df <- assay(se)
+
+## Without log transformation
+df_qn <- quantile_normalization(df, log_trans = FALSE)
+df_qn[1:5, 1:5]
+
+## With log transformation
+df_qn_log <- quantile_normalization(df, log_trans = TRUE)
+df_qn_log[1:5, 1:5]
 
 # -------------------------------
 # 2) Using a SummarizedExperiment
 # -------------------------------
-if (requireNamespace("airway") && requireNamespace("SummarizedExperiment")) {
-  library(SummarizedExperiment)
-  data(airway, package = "airway")
-  se <- airway
 
-  # Overwrite the 'counts' assay
-  se_qn <- quantile_normalization(se)
-  head(assay(se_qn))
+## Overwrite existing assay
+se2 <- quantile_normalization(se)
+assay(se2)[1:5, 1:5]
 
-  # Store results in a new assay
-  se_qn2 <- quantile_normalization(se, new_assay_name = "quant_counts")
-  head(assay(se_qn2, "quant_counts"))
+## Store result in new assay
+se3 <- quantile_normalization(se, new_assay_name = "quant_norm")
+assay(se3, "quant_norm")[1:5, 1:5]
 
-  # Create a test assay and normalize
-  mat <- assay(se)
-  assay(se, "test_counts") <- mat
-  se_qn3 <- quantile_normalization(se, assay_name = "test_counts", new_assay_name = "qn_test")
-  head(assay(se_qn3, "qn_test"))
-}
+## Use specific input assay (simulate new one)
+new_matrix <- matrix(
+  data = sample(x = seq(1, 100000), size = nrow(se) * ncol(se), replace = TRUE),
+  nrow = nrow(se),
+  ncol = ncol(se)
+)
+rownames(new_matrix) <- rownames(se)
+colnames(new_matrix) <- colnames(se)
 
+## Create a new assay in the SummarizedExperiment
+assay(se, "new_counts") <- new_matrix
+
+## Normalize the new assay and store it under a new name
+se4 <- quantile_normalization(se, assay_name = "new_counts", new_assay_name = "quant_new")
+assay(se4, "quant_new")[1:5, 1:5]
 }
