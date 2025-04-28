@@ -2,18 +2,98 @@
 % Please edit documentation in R/normalization_cpm.R
 \name{cpm_normalization}
 \alias{cpm_normalization}
-\title{Counts Per Million Normalization}
+\title{Counts Per Million normalization}
 \usage{
-cpm_normalization(x, log_trans = FALSE)
+cpm_normalization(
+  x,
+  log2_transform = FALSE,
+  assay_name = NULL,
+  new_assay_name = NULL
+)
 }
 \arguments{
-\item{log_trans}{Logical, whether to apply log2 transformation.}
+\item{x}{A \code{matrix}, \code{data.frame}, or a \code{SummarizedExperiment} object.}
 
-\item{object}{A matrix, data.frame, list of data.frames, or a SummarizedExperiment object.}
+\item{log2_transform}{Logical. If \code{TRUE}, apply \code{log2(... + 1)} transform
+to the CPM-normalized values.}
+
+\item{assay_name}{If \code{x} is a \code{SummarizedExperiment}, name of the assay
+to normalize (defaults to the first assay). Ignored otherwise.}
+
+\item{new_assay_name}{If \code{x} is a \code{SummarizedExperiment}, name of a new
+assay where results should be stored (defaults to \code{NULL}, meaning the existing
+assay is overwritten).}
 }
 \value{
-Normalized object of the same structure.
+\itemize{
+    \item If \code{x} is a \code{matrix} or \code{data.frame}, returns a \strong{matrix}
+      of CPM-normalized (and optionally \code{log2}-transformed) counts.
+    \item If \code{x} is a \code{SummarizedExperiment}, returns the same \code{SummarizedExperiment}
+      object with the specified assay replaced or a new assay created containing
+      the CPM-normalized data.
+  }
 }
 \description{
-Counts Per Million Normalization
+Normalizes a count matrix (or a SummarizedExperiment assay) by the
+counts-per-million (CPM) method. Specifically:
+  \enumerate{
+    \item If \code{log2_transform = TRUE}, a \code{log2(x + 1)} transform is applied afterward.
+  }
+}
+\examples{
+
+library(SummarizedExperiment)
+library(airway)
+data('airway')
+
+se = airway
+
+# -------------------------------
+# 1) Using a data.frame
+# -------------------------------
+
+df = assay(se)
+
+## Without log transformation
+df1 = cpm_normalization(df, log2_transform= FALSE)
+
+df1[1:5,1:5]
+
+## With log transformation
+df1 = cpm_normalization(df, log2_transform = TRUE)
+
+df1[1:5,1:5]
+
+# -------------------------------
+# 2) Using a SummarizedExperiment
+# -------------------------------
+
+# If now new_assay_name is provided, then overwrites existing assay
+se2 = cpm_normalization(se, log2_transform = FALSE)
+
+se2
+head(assay(se2))
+
+# If new new_assay_name, normalization stored in a new object
+se2 = cpm_normalization(se, log2_transform = FALSE, new_assay_name = 'cpm_counts')
+
+se2
+head(assay(se2, 'cpm_counts'))
+
+# A specific assay can also be selected
+new_matrix =  matrix(data = sample(x = seq(1, 100000),
+                                  size = nrow(se) * ncol(se),
+                                  replace = TRUE),
+                    nrow = nrow(se),
+                    ncol = ncol(se))
+rownames(new_matrix) = rownames(se)
+colnames(new_matrix) = colnames(se)
+
+## Creating a new assay called new counts
+assay(se, 'new_counts') = new_matrix
+
+se2 = cpm_normalization(se, new_assay_name = 'cpm_counts_new', assay_name = 'new_counts')
+
+se2
+head(assay(se2, 'cpm_counts_new'))
 }

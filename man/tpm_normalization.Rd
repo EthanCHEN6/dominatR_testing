@@ -7,7 +7,7 @@
 tpm_normalization(
   x,
   gene_length = NULL,
-  log_trans = FALSE,
+  log2_transform = FALSE,
   assay_name = NULL,
   new_assay_name = NULL
 )
@@ -26,7 +26,7 @@ or a \code{SummarizedExperiment} containing such counts.
 only if \code{x} is a data.frame or matrix. Must match the number of rows in
 \code{x}. Ignored if \code{x} is a SummarizedExperiment.}
 
-\item{log_trans}{Logical. If \code{TRUE}, apply \code{log2(... + 1)} transform
+\item{log2_transform}{Logical. If \code{TRUE}, apply \code{log2(... + 1)} transform
 to the TPM-normalized values.}
 
 \item{assay_name}{If \code{x} is a SummarizedExperiment, name of the assay to
@@ -45,7 +45,7 @@ A numeric \strong{matrix} of TPM or log2(TPM + 1) values if
 \description{
 Normalizes read counts by the TPM (Transcripts Per Million) method:
   \enumerate{
-    \item If \code{log_trans = TRUE}, applies \code{log2(TPM + 1)}.
+    \item If \code{log2_transform = TRUE}, applies \code{log2(TPM + 1)}.
   }
 }
 \details{
@@ -77,7 +77,7 @@ df = tpm_normalization(df, gene_length = gene_length)
 df[1:5, 1:5]
 
 ## With log transformation
-df = tpm_normalization(df, gene_length = gene_length, log_trans = TRUE)
+df = tpm_normalization(df, gene_length = gene_length, log2_transform = TRUE)
 
 df[1:5, 1:5]
 
@@ -86,12 +86,12 @@ df[1:5, 1:5]
 # -------------------------------
 
 # If now new_assay_name is provided, then overwrites existing assay
-se2 = tpm_normalization(se, log_trans = FALSE)
+se2 = tpm_normalization(se, log2_transform = FALSE)
 
 head(assay(se2))
 
 # If new new_assay_name, normalization stored in a new object
-se2 = tpm_normalization(se, log_trans = FALSE, new_assay_name = 'tpm_counts')
+se2 = tpm_normalization(se, log2_transform = FALSE, new_assay_name = 'tpm_counts')
 
 head(assay(se2, 'tpm_counts'))
 

@@ -7,7 +7,7 @@
 rpkm_normalization(
   x,
   gene_length = NULL,
-  log_trans = FALSE,
+  log2_transform = FALSE,
   assay_name = NULL,
   new_assay_name = NULL
 )
@@ -26,7 +26,7 @@ or a \code{SummarizedExperiment} containing such counts.
 only if \code{x} is a data.frame or matrix. Must match the number of rows in
 \code{x}. Ignored if \code{x} is a SummarizedExperiment.}
 
-\item{log_trans}{Logical. If \code{TRUE}, apply \code{log2(... + 1)} transform
+\item{log2_transform}{Logical. If \code{TRUE}, apply \code{log2(... + 1)} transform
 to the RPKM-normalized values.}
 
 \item{assay_name}{If \code{x} is a SummarizedExperiment, name of the assay to
@@ -47,7 +47,7 @@ Normalizes read counts by the RPKM (Reads Per Kilobase per Million mapped reads)
 \enumerate{
   \item Normalize counts by library size (column sums), scaled to millions.
   \item Divide each gene's value by its length in kilobases.
-  \item If \code{log_trans = TRUE}, applies \code{log2(RPKM + 1)}.
+  \item If \code{log2_transform = TRUE}, applies \code{log2(RPKM + 1)}.
 }
 }
 \details{
@@ -77,7 +77,7 @@ df = rpkm_normalization(df, gene_length = gene_length)
 df[1:5, 1:5]
 
 ## With log transformation
-df = rpkm_normalization(df, gene_length = gene_length, log_trans = TRUE)
+df = rpkm_normalization(df, gene_length = gene_length, log2_transform = TRUE)
 df[1:5, 1:5]
 
 # -------------------------------
@@ -85,11 +85,11 @@ df[1:5, 1:5]
 # -------------------------------
 
 # If no new_assay_name is provided, then overwrites existing assay
-se2 = rpkm_normalization(se, log_trans = FALSE)
+se2 = rpkm_normalization(se, log2_transform = FALSE)
 head(assay(se2))
 
 # If new_assay_name is given, normalization stored in a new assay
-se2 = rpkm_normalization(se, log_trans = FALSE, new_assay_name = 'rpkm_counts')
+se2 = rpkm_normalization(se, log2_transform = FALSE, new_assay_name = 'rpkm_counts')
 head(assay(se2, 'rpkm_counts'))
 
 # Creating a new assay to test specific input
